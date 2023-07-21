@@ -41,7 +41,6 @@ char READ_BNO_RPY = '3';
 char BRAKE_OFF_COMMAND = '5';
 char BRAKE_ON_COMMAND = '4';
 
-
 /* Analog voltage for controlling the water pumps. */
 int PUMP_ON_VOLTAGE = 250;
 int PUMP_OFF_VOLTAGE = 0;
@@ -51,7 +50,6 @@ int pump_id = 0;
 
 char brake_command;
 int brake_id = 0;
-
 
 struct Eulers 
 {
@@ -208,12 +206,10 @@ void setup()
   myServo.begin();
   myServo.setPWMFreq(60);
 
-
   // if (!bno.begin(OPERATION_MODE_CONFIG))
   // {
   //   Serial.print("No BNO055 detected.");
   //   while(1);
-
 
   // Load BNO calibration.
   bno.setSensorOffsets(CALIB_DATA);
