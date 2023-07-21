@@ -27,6 +27,8 @@ char READ_BNO_RPY = '3';
 int PUMP_ON_VOLTAGE = 250;
 int PUMP_OFF_VOLTAGE = 0;
 
+char pump_command = PUMP_OFF_COMMAND;
+int pump_id = 0;
 
 
 struct Eulers 
@@ -201,7 +203,8 @@ void loop()
       struct PcCommands commands = parse_data(data);
       if (commands.command == PUMP_ON_COMMAND || commands.command == PUMP_OFF_COMMAND)
       {
-        pump_control(commands.command, commands.pump_id); 
+        pump_command = commands.command;
+        pump_id = commands.pump_id;
       }
       else if (commands.command == INIT_BNO)
       {
@@ -209,5 +212,6 @@ void loop()
       }
     }
   }
+  pump_control(pump_command, pump_id);
   Serial.print(get_euler_message(eulers) + get_gravity_vector_message(event) + '\n');
 }
