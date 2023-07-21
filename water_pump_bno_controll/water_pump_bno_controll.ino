@@ -1,34 +1,58 @@
+#include <Arduino.h>
 #include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
 #include <math.h>
 
-/*BNO calibration data.*/
+Adafruit_BNO055 bno = Adafruit_BNO055(55);
+Adafruit_PWMServoDriver myServo = Adafruit_PWMServoDriver();
+
+/* BNO calibration data. */
 adafruit_bno055_offsets_t CALIB_DATA = 
 {
   -1, 19, -21, 0, 0, 0, 2, -1, 2, 1000, 480
 };
 
-/*Pins declaration.*/
+/* Pins declaration. */
 int DIRECTION_CONTROL_PINS[2] = {2, 4};
-int PWM_PINS[3] = {3, 5, 6};
+int PUMP_PWM_PINS[3] = {3, 5, 6};
 int NUMBER_OF_PUMPS = 3;
 
-/*Commands to communicate with PC.*/
+/* Servo brake MIN/MAX position */
+int MIN_MAX_VALUES[5][2] = 
+{
+	{ 150, 600 },
+	{ 150, 600 },
+	{ 150, 600 },
+	{ 150, 600 },
+  { 150, 600 },
+};
+
+/* Commands to communicate with PC. */
 String INIT_MESSAGE = "init";
 String INIT_RESPONSE = "OK";
+
 char PUMP_OFF_COMMAND = '0';
 char PUMP_ON_COMMAND = '1';
+
 char INIT_BNO = '2';
 char READ_BNO_RPY = '3';
 
-/*Analog voltage for controlling the water pumps.*/
+char BRAKE_OFF_COMMAND = '5';
+char BRAKE_ON_COMMAND = '4';
+
+
+/* Analog voltage for controlling the water pumps. */
 int PUMP_ON_VOLTAGE = 250;
 int PUMP_OFF_VOLTAGE = 0;
 
 char pump_command = PUMP_OFF_COMMAND;
 int pump_id = 0;
+
+char brake_command;
+int brake_id = 0;
 
 
 struct Eulers 
@@ -42,9 +66,10 @@ struct PcCommands
 {
   char command;
   int pump_id;
+  int brake_id;
 };
 
-/*Substract starting rpy values from eulers.*/
+/* Substract starting rpy values from eulers. */
 void substract_init_rpy_values(Eulers *eulers)
 {
   eulers->pitch -= init_rpy.pitch;
@@ -52,7 +77,7 @@ void substract_init_rpy_values(Eulers *eulers)
   eulers->yaw -= init_rpy.yaw;
 }
 
-/*Convert quaternion into eulers.*/
+/* Convert quaternion into eulers. */
 Eulers get_euler_angles_from_quaternion(imu::Quaternion quaternion, bool do_substract = true)
 {
     Eulers eulers;
@@ -93,7 +118,7 @@ String add_plus_signs(String a, String b, String c)
   return abc;
   }
 
-/*Create message from eulers, to send on PC.*/
+/* Create message from eulers, to send on PC. */
 String get_euler_message(Eulers eulers)
 {
   String roll = String(eulers.yaw);
@@ -117,7 +142,7 @@ String get_gravity_vector_message(sensors_event_t event)
   return gravity;
 }
 
-/*Parse message from PC into commands.*/
+/* Parse message from PC into commands. */
 struct PcCommands parse_data(String data)
 {
   struct PcCommands commands;
@@ -134,11 +159,19 @@ struct PcCommands parse_data(String data)
   {
     commands.command = data[0];
   }
-
+  else if (data[0] == BRAKE_ON_COMMAND || data[0] == BRAKE_OFF_COMMAND)
+  {
+    commands.command = data[0];
+    int brake_id = data[1] - '0';
+    if (brake_id < 5 && brake_id >= 0)
+    {
+      commands.brake_id = brake_id;
+    }
+  }
   return commands;
 }
 
-/*Controll water pumps.*/
+/* Controll water pumps. */
 void pump_control(char command, int pump_id)
 {
   int value;
@@ -151,20 +184,38 @@ void pump_control(char command, int pump_id)
     value = PUMP_OFF_VOLTAGE;
   }
 
-  analogWrite(PWM_PINS[pump_id], value);
+  analogWrite(PUMP_PWM_PINS[pump_id], value);
 }
 
-Adafruit_BNO055 bno = Adafruit_BNO055(55);
+/* Brake control */
+void brake_control(char command, int brake_id)
+{
+  if (command == BRAKE_ON_COMMAND)
+  {
+    //Serial.println("Brake activated");
+    //Serial.println(brake_id);
+    myServo.setPWM(brake_id, 0, MIN_MAX_VALUES[brake_id][1]);
+  }
+  else if (command = BRAKE_OFF_COMMAND)
+  {
+    //Serial.println("Brake deactivated");
+    //Serial.println(brake_id);
+    myServo.setPWM(brake_id, 0, MIN_MAX_VALUES[brake_id][0]);
+  }
+}
 
 void setup() 
 {
   Serial.begin(115200);
+  myServo.begin();
+  myServo.setPWMFreq(60);
 
-  if (!bno.begin(OPERATION_MODE_CONFIG))
-  {
-    Serial.print("No BNO055 detected.");
-    while(1);
-  }
+
+  // if (!bno.begin(OPERATION_MODE_CONFIG))
+  // {
+  //   Serial.print("No BNO055 detected.");
+  //   while(1);
+
 
   // Load BNO calibration.
   bno.setSensorOffsets(CALIB_DATA);
@@ -188,7 +239,7 @@ void loop()
   Eulers eulers = get_euler_angles_from_quaternion(bno.getQuat());
   sensors_event_t event;
   bno.getEvent(&event, bno.VECTOR_GRAVITY);
-
+  
   if (Serial.available() > 0)
   {
     String data = Serial.readStringUntil('\n');
@@ -210,8 +261,22 @@ void loop()
       {
          init_rpy = get_euler_angles_from_quaternion(bno.getQuat(), false);
       }
+      if (commands.command == BRAKE_ON_COMMAND || commands.command == BRAKE_OFF_COMMAND)
+      {
+        brake_command = commands.command;
+        brake_id = commands.brake_id;
+      }
     }
   }
   pump_control(pump_command, pump_id);
+  brake_control(brake_command, brake_id);
   Serial.print(get_euler_message(eulers) + get_gravity_vector_message(event) + '\n');
 }
+
+
+/* Servo enabling/disabling holding torque 
+
+  myServo.setPWM(0, 0, 150);                                   // holds the position
+  myServo.setPWM(0, 4096, 0); OR myServo.setPWM(0, 0, 4096);  // turns off the motor/makes it movable 
+
+*/
