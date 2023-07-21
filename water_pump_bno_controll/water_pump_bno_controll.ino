@@ -10,8 +10,7 @@ Adafruit_BNO055 bno = Adafruit_BNO055(55);
 Adafruit_PWMServoDriver myServo = Adafruit_PWMServoDriver();
 
 /* BNO calibration data. */
-adafruit_bno055_offsets_t CALIB_DATA = 
-{
+adafruit_bno055_offsets_t CALIB_DATA = {
   -1, 19, -21, 0, 0, 0, 2, -1, 2, 1000, 480
 };
 
@@ -21,8 +20,7 @@ int PUMP_PWM_PINS[3] = {3, 5, 6};
 int NUMBER_OF_PUMPS = 3;
 
 /* Servo brake MIN/MAX position */
-int MIN_MAX_VALUES[5][2] = 
-{
+int MIN_MAX_VALUES[5][2] = {
 	{ 150, 600 },
 	{ 150, 600 },
 	{ 150, 600 },
@@ -272,7 +270,6 @@ void loop()
   brake_control(brake_command, brake_id);
   Serial.print(get_euler_message(eulers) + get_gravity_vector_message(event) + '\n');
 }
-
 
 /* Servo enabling/disabling holding torque 
 
