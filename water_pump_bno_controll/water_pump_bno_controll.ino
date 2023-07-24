@@ -18,6 +18,7 @@ adafruit_bno055_offsets_t CALIB_DATA = {
 int DIRECTION_CONTROL_PINS[2] = {2, 4};
 int PUMP_PWM_PINS[3] = {3, 5, 6};
 int NUMBER_OF_PUMPS = 3;
+int VOLTAGE_DIVIDER = A6;
 
 /* Servo brake MIN/MAX position */
 int MIN_MAX_VALUES[5][2] = {
@@ -136,6 +137,23 @@ String get_gravity_vector_message(sensors_event_t event)
   String gravity = add_plus_signs(x, y, z);
 
   return gravity;
+}
+
+/* Create message from voltage devider */
+String battery_voltage()
+{
+  float voltage_value = analogRead(VOLTAGE_DIVIDER);
+  float voltage = voltage_value * 4.0 * 4.75 / 1023; // 4x voltage drop (R1 = 100kOhm, R2 = 300kOhm), 4.75 Arduino NANO max. ADC
+  String voltage_output;
+
+  if (voltage < 10) {
+    voltage_output = "0" + String(voltage, 1);
+  }
+  else {
+    voltage_output = String(voltage, 1); // 4 digit value
+  }
+
+  return voltage_output;
 }
 
 /* Parse message from PC into commands. */
@@ -264,7 +282,7 @@ void loop()
     }
   }
   pump_control(pump_command, pump_id);
-  Serial.print(get_euler_message(eulers) + get_gravity_vector_message(event) + '\n');
+  Serial.print(get_euler_message(eulers) + get_gravity_vector_message(event) + battery_voltage() + '\n');
 }
 
 /* Servo enabling/disabling holding torque 
