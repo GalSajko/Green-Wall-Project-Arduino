@@ -150,7 +150,7 @@ String battery_voltage()
     voltage_output = "0" + String(voltage, 1);
   }
   else {
-    voltage_output = String(voltage, 1); // 4 digit value
+    voltage_output = String(voltage, 1); // 4 digit value (. included)
   }
 
   return voltage_output;
