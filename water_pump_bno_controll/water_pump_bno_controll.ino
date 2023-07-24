@@ -38,8 +38,8 @@ char PUMP_ON_COMMAND = '1';
 char INIT_BNO = '2';
 char READ_BNO_RPY = '3';
 
-char BRAKE_OFF_COMMAND = '5';
-char BRAKE_ON_COMMAND = '4';
+char BRAKE_OFF_COMMAND = '4';
+char BRAKE_ON_COMMAND = '5';
 
 /* Analog voltage for controlling the water pumps. */
 int PUMP_ON_VOLTAGE = 250;
@@ -255,15 +255,15 @@ void loop()
       {
          init_rpy = get_euler_angles_from_quaternion(bno.getQuat(), false);
       }
-      if (commands.command == BRAKE_ON_COMMAND || commands.command == BRAKE_OFF_COMMAND)
+      else if (commands.command == BRAKE_ON_COMMAND || commands.command == BRAKE_OFF_COMMAND)
       {
         brake_command = commands.command;
         brake_id = commands.brake_id;
+        brake_control(brake_command, brake_id);
       }
     }
   }
   pump_control(pump_command, pump_id);
-  brake_control(brake_command, brake_id);
   Serial.print(get_euler_message(eulers) + get_gravity_vector_message(event) + '\n');
 }
 
