@@ -239,11 +239,12 @@ void setup()
   myServo.begin();
   myServo.setPWMFreq(60);
 
-  // if (!bno.begin(OPERATION_MODE_CONFIG))
-  // {
-  //   Serial.print("No BNO055 detected.");
-  //   while(1);
-
+  if (!bno.begin(OPERATION_MODE_CONFIG))
+  {
+    Serial.print("No BNO055 detected.");
+    while(1);
+  }
+  
   // Load BNO calibration.
   bno.setSensorOffsets(CALIB_DATA);
   // Put BNO in IMU mode (relative heading).
