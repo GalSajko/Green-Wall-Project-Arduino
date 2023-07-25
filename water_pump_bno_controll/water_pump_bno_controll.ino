@@ -51,6 +51,7 @@ int pump_id = 0;
 
 char brake_command;
 int brake_id = 0;
+int ALL_BRAKES = 5;
 
 struct Eulers 
 {
@@ -206,15 +207,29 @@ void brake_control(char command, int brake_id)
 {
   if (command == BRAKE_ON_COMMAND)
   {
-    //Serial.println("Brake activated");
-    //Serial.println(brake_id);
-    myServo.setPWM(brake_id, 0, MIN_MAX_VALUES[brake_id][1]);
+    if (brake_id == ALL_BRAKES) {
+      for (int brake_counter = 0; brake_counter < 5; brake_counter++)
+      {
+        myServo.setPWM(brake_counter, 0, MIN_MAX_VALUES[brake_counter][1]);
+      }
+    }
+    else if (brake_id < 5)
+    {
+      myServo.setPWM(brake_id, 0, MIN_MAX_VALUES[brake_id][1]);
+    }
   }
   else if (command = BRAKE_OFF_COMMAND)
   {
-    //Serial.println("Brake deactivated");
-    //Serial.println(brake_id);
-    myServo.setPWM(brake_id, 0, MIN_MAX_VALUES[brake_id][0]);
+    if (brake_id == ALL_BRAKES) {
+      for (int brake_counter = 0; brake_counter < 5; brake_counter++)
+      {
+        myServo.setPWM(brake_counter, 0, MIN_MAX_VALUES[brake_counter][0]);
+      }
+    }
+    else if (brake_id < 5)
+    {
+      myServo.setPWM(brake_id, 0, MIN_MAX_VALUES[brake_id][0]);
+    }
   }
 }
 
