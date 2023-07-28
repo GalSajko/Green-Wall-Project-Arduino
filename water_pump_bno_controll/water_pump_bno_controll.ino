@@ -22,11 +22,11 @@ int VOLTAGE_DIVIDER = A6;
 
 /* Servo brake MIN/MAX position */
 int MIN_MAX_VALUES[5][2] = {
-	{ 150, 600 },
-	{ 150, 600 },
-	{ 150, 600 },
-	{ 150, 600 },
-  { 150, 600 },
+	{ 900, 2100 },
+	{ 900, 2100 },
+	{ 900, 2100 },
+	{ 900, 2100 },
+  { 900, 2100 },
 };
 
 /* Commands to communicate with PC. */
@@ -178,7 +178,7 @@ struct PcCommands parse_data(String data)
   {
     commands.command = data[0];
     int brake_id = data[1] - '0';
-    if (brake_id < 5 && brake_id >= 0)
+    if (brake_id < 6 && brake_id >= 0)
     {
       commands.brake_id = brake_id;
     }
@@ -210,12 +210,12 @@ void brake_control(char command, int brake_id)
     if (brake_id == ALL_BRAKES) {
       for (int brake_counter = 0; brake_counter < 5; brake_counter++)
       {
-        myServo.setPWM(brake_counter, 0, MIN_MAX_VALUES[brake_counter][1]);
+        myServo.writeMicroseconds(brake_counter, MIN_MAX_VALUES[brake_counter][1]);
       }
     }
     else if (brake_id < 5)
     {
-      myServo.setPWM(brake_id, 0, MIN_MAX_VALUES[brake_id][1]);
+      myServo.writeMicroseconds(brake_id, MIN_MAX_VALUES[brake_id][1]);
     }
   }
   else if (command = BRAKE_OFF_COMMAND)
@@ -223,12 +223,12 @@ void brake_control(char command, int brake_id)
     if (brake_id == ALL_BRAKES) {
       for (int brake_counter = 0; brake_counter < 5; brake_counter++)
       {
-        myServo.setPWM(brake_counter, 0, MIN_MAX_VALUES[brake_counter][0]);
+        myServo.writeMicroseconds(brake_counter, MIN_MAX_VALUES[brake_counter][0]);
       }
     }
     else if (brake_id < 5)
     {
-      myServo.setPWM(brake_id, 0, MIN_MAX_VALUES[brake_id][0]);
+      myServo.writeMicroseconds(brake_id, MIN_MAX_VALUES[brake_id][0]);
     }
   }
 }
@@ -239,11 +239,11 @@ void setup()
   myServo.begin();
   myServo.setPWMFreq(60);
 
-  if (!bno.begin(OPERATION_MODE_CONFIG))
-  {
-    Serial.print("No BNO055 detected.");
-    while(1);
-  }
+  // if (!bno.begin(OPERATION_MODE_CONFIG))
+  // {
+  //   Serial.print("No BNO055 detected.");
+  //   while(1);
+  // }
   
   // Load BNO calibration.
   bno.setSensorOffsets(CALIB_DATA);
