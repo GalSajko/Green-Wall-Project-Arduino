@@ -20,7 +20,7 @@ int PUMP_PWM_PINS[3] = {3, 5, 6};
 int NUMBER_OF_PUMPS = 3;
 int VOLTAGE_DIVIDER = A6;
 
-/* Servo brake MIN/MAX position */
+/* Servo break MIN/MAX position */
 int MIN_MAX_VALUES[5][2] = {
 	{ 900, 2100 },
 	{ 900, 2100 },
@@ -39,8 +39,8 @@ char PUMP_ON_COMMAND = '1';
 char INIT_BNO = '2';
 char READ_BNO_RPY = '3';
 
-char BRAKE_OFF_COMMAND = '4';
-char BRAKE_ON_COMMAND = '5';
+char BREAK_OFF_COMMAND = '4';
+char BREAK_ON_COMMAND = '5';
 
 /* Analog voltage for controlling the water pumps. */
 int PUMP_ON_VOLTAGE = 250;
@@ -49,9 +49,9 @@ int PUMP_OFF_VOLTAGE = 0;
 char pump_command = PUMP_OFF_COMMAND;
 int pump_id = 0;
 
-char brake_command;
-int brake_id = 0;
-int ALL_BRAKES = 5;
+char break_command;
+int break_id = 0;
+int ALL_BREAKS = 5;
 
 struct Eulers 
 {
@@ -64,7 +64,7 @@ struct PcCommands
 {
   char command;
   int pump_id;
-  int brake_id;
+  int break_id;
 };
 
 /* Substract starting rpy values from eulers. */
@@ -174,13 +174,13 @@ struct PcCommands parse_data(String data)
   {
     commands.command = data[0];
   }
-  else if (data[0] == BRAKE_ON_COMMAND || data[0] == BRAKE_OFF_COMMAND)
+  else if (data[0] == BREAK_ON_COMMAND || data[0] == BREAK_OFF_COMMAND)
   {
     commands.command = data[0];
-    int brake_id = data[1] - '0';
-    if (brake_id < 6 && brake_id >= 0)
+    int break_id = data[1] - '0';
+    if (break_id < 6 && break_id >= 0)
     {
-      commands.brake_id = brake_id;
+      commands.break_id = break_id;
     }
   }
   return commands;
@@ -203,32 +203,32 @@ void pump_control(char command, int pump_id)
 }
 
 /* Brake control */
-void brake_control(char command, int brake_id)
+void break_control(char command, int break_id)
 {
-  if (command == BRAKE_ON_COMMAND)
+  if (command == BREAK_ON_COMMAND)
   {
-    if (brake_id == ALL_BRAKES) {
-      for (int brake_counter = 0; brake_counter < 5; brake_counter++)
+    if (break_id == ALL_BREAKS) {
+      for (int break_counter = 0; break_counter < 5; break_counter++)
       {
-        myServo.writeMicroseconds(brake_counter, MIN_MAX_VALUES[brake_counter][1]);
+        myServo.writeMicroseconds(break_counter, MIN_MAX_VALUES[break_counter][1]);
       }
     }
-    else if (brake_id < 5)
+    else if (break_id < 5)
     {
-      myServo.writeMicroseconds(brake_id, MIN_MAX_VALUES[brake_id][1]);
+      myServo.writeMicroseconds(break_id, MIN_MAX_VALUES[break_id][1]);
     }
   }
-  else if (command = BRAKE_OFF_COMMAND)
+  else if (command = BREAK_OFF_COMMAND)
   {
-    if (brake_id == ALL_BRAKES) {
-      for (int brake_counter = 0; brake_counter < 5; brake_counter++)
+    if (break_id == ALL_BREAKS) {
+      for (int break_counter = 0; break_counter < 5; break_counter++)
       {
-        myServo.writeMicroseconds(brake_counter, MIN_MAX_VALUES[brake_counter][0]);
+        myServo.writeMicroseconds(break_counter, MIN_MAX_VALUES[break_counter][0]);
       }
     }
-    else if (brake_id < 5)
+    else if (break_id < 5)
     {
-      myServo.writeMicroseconds(brake_id, MIN_MAX_VALUES[brake_id][0]);
+      myServo.writeMicroseconds(break_id, MIN_MAX_VALUES[break_id][0]);
     }
   }
 }
@@ -289,11 +289,11 @@ void loop()
       {
          init_rpy = get_euler_angles_from_quaternion(bno.getQuat(), false);
       }
-      else if (commands.command == BRAKE_ON_COMMAND || commands.command == BRAKE_OFF_COMMAND)
+      else if (commands.command == BREAK_ON_COMMAND || commands.command == BREAK_OFF_COMMAND)
       {
-        brake_command = commands.command;
-        brake_id = commands.brake_id;
-        brake_control(brake_command, brake_id);
+        break_command = commands.command;
+        break_id = commands.break_id;
+        break_control(break_command, break_id);
       }
     }
   }
