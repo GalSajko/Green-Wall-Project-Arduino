@@ -3,16 +3,12 @@
 #include <Adafruit_PWMServoDriver.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
+#include <Adafruit_MPU6050.h>
 #include <utility/imumaths.h>
 #include <math.h>
 
-Adafruit_BNO055 bno = Adafruit_BNO055(55);
 Adafruit_PWMServoDriver myServo = Adafruit_PWMServoDriver();
-
-/* BNO calibration data. */
-adafruit_bno055_offsets_t CALIB_DATA = {
-  -1, 19, -21, 0, 0, 0, 2, -1, 2, 1000, 480
-};
+Adafruit_MPU6050 mpu;
 
 /* Pins declaration. */
 int DIRECTION_CONTROL_PINS[2] = {2, 4};
@@ -36,11 +32,12 @@ String INIT_RESPONSE = "OK";
 char PUMP_OFF_COMMAND = '0';
 char PUMP_ON_COMMAND = '1';
 
-char INIT_BNO = '2';
-char READ_BNO_RPY = '3';
-
 char BREAK_OFF_COMMAND = '4';
 char BREAK_ON_COMMAND = '5';
+int ALL_BREAKS = 5;
+
+float G = 9.81;
+float FLAT_ACC_OFFSETS[3] = {0, -0.12, G - 13.13};
 
 /* Analog voltage for controlling the water pumps. */
 int PUMP_ON_VOLTAGE = 250;
@@ -51,14 +48,6 @@ int pump_id = 0;
 
 char break_command;
 int break_id = 0;
-int ALL_BREAKS = 5;
-
-struct Eulers 
-{
-  float roll = 0.0;
-  float pitch = 0.0;
-  float yaw = 0.0;
-} init_rpy;
 
 struct PcCommands
 {
@@ -66,35 +55,6 @@ struct PcCommands
   int pump_id;
   int break_id;
 };
-
-/* Substract starting rpy values from eulers. */
-void substract_init_rpy_values(Eulers *eulers)
-{
-  eulers->pitch -= init_rpy.pitch;
-  eulers->roll -= init_rpy.roll;
-  eulers->yaw -= init_rpy.yaw;
-}
-
-/* Convert quaternion into eulers. */
-Eulers get_euler_angles_from_quaternion(imu::Quaternion quaternion, bool do_substract = true)
-{
-    Eulers eulers;
-    float q_1 = quaternion.x();
-    float q_2 = quaternion.y();
-    float q_3 = quaternion.z();
-    float q0 = quaternion.w();
-
-    eulers.roll = atan2(2 * (q0 * q_1 + q_2 * q_3), 1 - 2 * (q_1 * q_1 + q_2 * q_2));
-    eulers.pitch = asin(2 * (q0 * q_2 - q_1 * q_3));
-    eulers.yaw = atan2(2 * (q0 * q_3 + q_1 * q_2), -1 + 2 * (q0 * q0 + q_1 * q_1));
-
-    if (do_substract)
-    {
-      substract_init_rpy_values(&eulers);
-    }
-  
-    return eulers;
-}
 
 String add_plus_signs(String a, String b, String c)
 {
@@ -114,30 +74,43 @@ String add_plus_signs(String a, String b, String c)
   String abc = a + b + c;
 
   return abc;
+}
+
+String prepare_gravity_string(float value)
+{
+  String gravity_string = String(abs(value), 2);
+
+  bool add_zero = abs(value) < 10.0;
+  bool add_plus = value >= 0.0;
+
+  if (add_zero)
+  {
+    gravity_string = "0" + gravity_string;
+  }
+  if (add_plus)
+  {
+    gravity_string = "+" + gravity_string;
+  }
+  else
+  {
+    gravity_string = "-" + gravity_string;
   }
 
-/* Create message from eulers, to send on PC. */
-String get_euler_message(Eulers eulers)
-{
-  String roll = String(eulers.yaw);
-  String pitch = String(eulers.roll * (-1));
-  String yaw = String(eulers.pitch);
-
-  String rpy = add_plus_signs(roll, pitch, yaw);
-
-  return rpy;
+  return gravity_string;
 }
 
 String get_gravity_vector_message(sensors_event_t event)
 {
-  String x = String(event.acceleration.x);
-  String y = String(event.acceleration.y);
-  // Minus because acc reading declaration.
-  String z = String(-event.acceleration.z);
+  float x_val = -event.acceleration.x;
+  String y = prepare_gravity_string(x_val);
 
-  String gravity = add_plus_signs(x, y, z);
+  float y_val = event.acceleration.y;
+  String x = prepare_gravity_string(y_val);
 
-  return gravity;
+  float z_val = -event.acceleration.z;
+  String z = prepare_gravity_string(z_val);
+
+  return x + y + z;
 }
 
 /* Create message from voltage devider */
@@ -169,10 +142,6 @@ struct PcCommands parse_data(String data)
     {
       commands.pump_id = pump_id;
     }
-  }
-  else if (data[0] == INIT_BNO || data[0] == READ_BNO_RPY)
-  {
-    commands.command = data[0];
   }
   else if (data[0] == BREAK_ON_COMMAND || data[0] == BREAK_OFF_COMMAND)
   {
@@ -233,41 +202,59 @@ void break_control(char command, int break_id)
   }
 }
 
+void read_average_offsets()
+{
+  float x_sum = 0;
+  float y_sum = 0;
+  float z_sum = 0;
+
+  int no_of_measurements = 10000;
+
+  for (int i = 0; i < no_of_measurements; i++)
+  {
+    sensors_event_t acc_event, gyro_event, temp_event;
+    mpu.getEvent(&acc_event, &gyro_event, &temp_event);
+
+    x_sum += acc_event.acceleration.x;
+    y_sum += acc_event.acceleration.y;
+    z_sum += acc_event.acceleration.z;
+  }
+  Serial.print("X: ");
+  Serial.println(x_sum / no_of_measurements);
+  Serial.print("Y: ");
+  Serial.println(y_sum / no_of_measurements);
+  Serial.print("Z: ");
+  Serial.println(z_sum / no_of_measurements);
+}
+
 void setup() 
 {
   Serial.begin(115200);
   myServo.begin();
   myServo.setPWMFreq(60);
 
-  if (!bno.begin(OPERATION_MODE_CONFIG))
+  if (!mpu.begin())
   {
-    Serial.print("No BNO055 detected.");
+    Serial.println("No MPU6050 detected.");
     while(1);
   }
-  
-  // Load BNO calibration.
-  bno.setSensorOffsets(CALIB_DATA);
-  // Put BNO in IMU mode (relative heading).
-  bno.setMode(OPERATION_MODE_IMUPLUS);
+
+  mpu.setAccelerometerRange(MPU6050_RANGE_16_G);
+  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
 
   delay(1000);
-
-  // Remap BNO axis to match spider's orientation on the wall.
-  bno.setAxisRemap(bno.REMAP_CONFIG_P1);
-  bno.setAxisSign(bno.REMAP_SIGN_P2);
-
-  bno.setExtCrystalUse(true);
   
   digitalWrite(DIRECTION_CONTROL_PINS[0], HIGH);
   digitalWrite(DIRECTION_CONTROL_PINS[1], LOW);
+
+  // read_average_offsets();
 }
 
 void loop() 
 {
-  Eulers eulers = get_euler_angles_from_quaternion(bno.getQuat());
-  sensors_event_t event;
-  bno.getEvent(&event, bno.VECTOR_GRAVITY);
-  
+  sensors_event_t acc_event, gyro_event, temp_event;
+  mpu.getEvent(&acc_event, &gyro_event, &temp_event);
+
   if (Serial.available() > 0)
   {
     String data = Serial.readStringUntil('\n');
@@ -285,10 +272,6 @@ void loop()
         pump_command = commands.command;
         pump_id = commands.pump_id;
       }
-      else if (commands.command == INIT_BNO)
-      {
-         init_rpy = get_euler_angles_from_quaternion(bno.getQuat(), false);
-      }
       else if (commands.command == BREAK_ON_COMMAND || commands.command == BREAK_OFF_COMMAND)
       {
         break_command = commands.command;
@@ -298,7 +281,7 @@ void loop()
     }
   }
   pump_control(pump_command, pump_id);
-  Serial.print(get_euler_message(eulers) + get_gravity_vector_message(event) + battery_voltage() + '\n');
+  Serial.print(get_gravity_vector_message(acc_event) + battery_voltage() + '\n');
 }
 
 /* Servo enabling/disabling holding torque 
