@@ -37,7 +37,7 @@ char BREAK_ON_COMMAND = '5';
 int ALL_BREAKS = 5;
 
 float G = 9.81;
-float FLAT_ACC_OFFSETS[3] = {0, -0.12, G - 13.13};
+float FLAT_ACC_OFFSETS[3] = {9.92 - G, 0.45, 1.59};
 
 /* Analog voltage for controlling the water pumps. */
 int PUMP_ON_VOLTAGE = 250;
@@ -101,13 +101,13 @@ String prepare_gravity_string(float value)
 
 String get_gravity_vector_message(sensors_event_t event)
 {
-  float x_val = -event.acceleration.x;
+  float x_val = -(event.acceleration.x - FLAT_ACC_OFFSETS[0]);
   String y = prepare_gravity_string(x_val);
 
-  float y_val = event.acceleration.y;
+  float y_val = event.acceleration.y - FLAT_ACC_OFFSETS[1];
   String x = prepare_gravity_string(y_val);
 
-  float z_val = -event.acceleration.z;
+  float z_val = -(event.acceleration.z - FLAT_ACC_OFFSETS[2]);
   String z = prepare_gravity_string(z_val);
 
   return x + y + z;
@@ -210,6 +210,7 @@ void read_average_offsets()
 
   int no_of_measurements = 10000;
 
+  Serial.println("Measuring initial offsets ...");
   for (int i = 0; i < no_of_measurements; i++)
   {
     sensors_event_t acc_event, gyro_event, temp_event;
