@@ -15,6 +15,7 @@ int DIRECTION_CONTROL_PINS[2] = {2, 4};
 int PUMP_PWM_PINS[3] = {3, 5, 6};
 int NUMBER_OF_PUMPS = 3;
 int VOLTAGE_DIVIDER = A6;
+int TUBE_HOLDER_SERVO = 11;
 
 /* Servo break MIN/MAX position */
 int MIN_MAX_VALUES[5][2] = {
@@ -24,6 +25,9 @@ int MIN_MAX_VALUES[5][2] = {
 	{ 900, 2100 },
   { 900, 2100 },
 };
+
+int EXPANDED_TUBE_HOLDER_VALUE = 2875;
+int CONTRACTED_TUBE_HOLDER_VALUE = 1015;
 
 /* Commands to communicate with PC. */
 String INIT_MESSAGE = "init";
@@ -35,6 +39,9 @@ char PUMP_ON_COMMAND = '1';
 char BREAK_OFF_COMMAND = '4';
 char BREAK_ON_COMMAND = '5';
 int ALL_BREAKS = 5;
+
+char EXPAND_TUBE_HOLDER = '6';
+char CONTRACT_TUBE_HOLDER = '7';
 
 float G = 9.81;
 float FLAT_ACC_OFFSETS[3] = {9.92 - G, 0.45, 1.59};
@@ -152,6 +159,10 @@ struct PcCommands parse_data(String data)
       commands.break_id = break_id;
     }
   }
+  else if (data[0] == EXPAND_TUBE_HOLDER || data[0] == CONTRACT_TUBE_HOLDER)
+  {
+    commands.command = data[0];
+  }
   return commands;
 }
 
@@ -199,6 +210,18 @@ void break_control(char command, int break_id)
     {
       myServo.writeMicroseconds(break_id, MIN_MAX_VALUES[break_id][0]);
     }
+  }
+}
+
+void tube_holder_control(char command)
+{
+  if (command == EXPAND_TUBE_HOLDER)
+  {
+    myServo.writeMicroseconds(TUBE_HOLDER_SERVO, EXPANDED_TUBE_HOLDER_VALUE);
+  }
+  else if (command == CONTRACT_TUBE_HOLDER)
+  {
+    myServo.writeMicroseconds(TUBE_HOLDER_SERVO, CONTRACTED_TUBE_HOLDER_VALUE);
   }
 }
 
@@ -278,6 +301,10 @@ void loop()
         break_command = commands.command;
         break_id = commands.break_id;
         break_control(break_command, break_id);
+      }
+      else if (commands.command == EXPAND_TUBE_HOLDER || commands.command == CONTRACT_TUBE_HOLDER)
+      {
+        tube_holder_control(commands.command);
       }
     }
   }
