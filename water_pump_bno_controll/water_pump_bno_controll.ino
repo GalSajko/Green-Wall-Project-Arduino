@@ -19,11 +19,11 @@ int TUBE_HOLDER_SERVO = 11;
 
 /* Servo break MIN/MAX position */
 int MIN_MAX_VALUES[5][2] = {
-	{ 850, 2100 },
-	{ 850, 2100 },
-	{ 850, 2100 },
-	{ 850, 2100 },
-  { 850, 2100 },
+	{ 400, 2100 },
+	{ 400, 2100 },
+	{ 400, 2100 },
+	{ 400, 2100 },
+  { 400, 2100 },
 };
 
 int EXPANDED_TUBE_HOLDER_VALUE = 2875;
